@@ -1,39 +1,47 @@
 const fs = require("fs");
-const csv = require("csv-parser");
 
 const simulate = () => {
   try {
-    let rowIndex = 0;
-    let package_count = 0;
-    const readFunction = () => {
-      const readStream = fs.createReadStream("input.csv");
-      let rows = [];
-      readStream
-        .pipe(csv())
-        .on("data", (row) => {
-          rows.push(row);
-        })
-        .on("end", () => {
-          if (rowIndex < rows.length) {
-            const csvString = Object.values(rows[rowIndex++]).join(",") + "\n";
-            fs.appendFile("output.csv", csvString, "utf8", (error) => {
-              if (error) {
-                console.log(error);
-              } else {
-                console.log(`${csvString} appended`);
-                console.log(`Package Count => ${++package_count}`);
-              }
-            });
-          } else {
-            console.log("End of CSV");
-            clearInterval(interval);
-          }
-        });
-    };
+    const inputFilePath = "input.csv";
+    const outputFilePath = "output.csv";
 
-    const interval = setInterval(readFunction, 1000);
+    // Read the entire CSV file
+    const data = fs.readFileSync(inputFilePath, "utf8");
+    const rows = data.trim().split("\n");
+    const headers = rows[0]; // Extract headers
+    const csvData = rows.slice(1).map((row) => row.split(","));
+
+    fs.writeFile(outputFilePath, headers, { encoding: 'utf8', flag: "a" }, (err) => {
+      if(err){
+        console.error(err);
+      }else{
+        console.log("Successfully added headers");
+      }
+    })
+
+    let currentIndex = 0;
+
+    // Function to write one row of CSV data per second
+    function writeRowPerSecond() {
+      if (currentIndex < csvData.length) {
+        const rowData = csvData[currentIndex].join(",");
+        const csvContent = `${rowData}\n`; // Row data without headers, as headers are added separately
+
+        fs.appendFileSync(outputFilePath, csvContent, { encoding: 'utf8' });
+        console.log(`Row ${currentIndex + 1} has been written to output.csv`);
+        currentIndex++;
+
+        // Continue writing rows until the end
+        if (currentIndex < csvData.length) {
+          setTimeout(writeRowPerSecond, 1000);
+        }
+      }
+    }
+
+    // Start writing rows after a delay
+    setTimeout(writeRowPerSecond, 1000);
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
 };
 
@@ -67,4 +75,4 @@ const jsonToCsv = (dataJSON) => {
   }
 };
 
-module.exports = { simulate, jsonToCsv};
+module.exports = { simulate, jsonToCsv };
